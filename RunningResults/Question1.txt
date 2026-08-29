@@ -1,0 +1,11 @@
+The following results pertain exclusively to question 1 of Assignment 2. These results show a FOM increase of 1802.17%.
+
+Running simulation with 100000 particles in analog mode...
+k_inf = 1.08185 +/- 0.00441
+Elapsed time: 149.47630 ms
+FOM: 343841.77360
+
+Running simulation with 100000 particles in implicit mode...
+k_inf = 1.08132 +/- 0.00112
+Elapsed time: 127.92740 ms
+FOM: 6196645.07531
