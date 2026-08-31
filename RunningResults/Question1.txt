@@ -1,4 +1,7 @@
-The following results pertain exclusively to question 1 of Assignment 2. These results show a FOM increase of 1802.17%.
+The following results pertain exclusively to question 1 of Assignment 2.
+The tallies needed for questions 2, 3 and 4 are not included in these results.
+Hyperparameters: Theta = 1, threshold = 1e-3
+These results show a FOM increase of 1802.17%.
 
 Running simulation with 100000 particles in analog mode...
 k_inf = 1.08185 +/- 0.00441

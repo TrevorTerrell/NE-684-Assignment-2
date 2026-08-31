@@ -35,18 +35,18 @@ public:
      * @param energy The energy the collision even happened at.
      * @return A vector of cross section values ordered by Pu:(scatter, capture, fission), U:(scatter, capture, fission), Unknown:(scatter), Total.
      */
-    std::vector<float> getCrossSections(const double energy) {
-        std::vector<float> XSec;
+    std::vector<double> getCrossSections(const double energy) {
+        std::vector<double> XSec;
         XSec.reserve(8);
 
-        std::vector<float> XSec_Pu = getFissionableCrossSections(energy, &Pu239);
+        std::vector<double> XSec_Pu = getFissionableCrossSections(energy, &Pu239);
         XSec.insert(XSec.end(), XSec_Pu.begin(), XSec_Pu.end());
 
-        std::vector<float> XSec_U = getFissionableCrossSections(energy, &U238);
+        std::vector<double> XSec_U = getFissionableCrossSections(energy, &U238);
         XSec.insert(XSec.end(), XSec_U.begin(), XSec_U.end());
 
-        XSec.push_back(0.1668101e-1f);
-        XSec.push_back(std::accumulate(XSec.begin(), XSec.end(), 0.0f));
+        XSec.push_back(0.1668101e-1);
+        XSec.push_back(std::accumulate(XSec.begin(), XSec.end(), 0.0));
 
         return XSec;
     }
@@ -54,8 +54,8 @@ public:
     const std::vector<float> neutronsFromFission = {2.88f, 0.0f, 0.0f};
 
 private:
-    static std::vector<float> getFissionableCrossSections(const double energy, const Fissionable_Isotope *isotope) {
-        std::vector<float> XSec(3); // ordered scatter-capture-fission
+    static std::vector<double> getFissionableCrossSections(const double energy, const Fissionable_Isotope *isotope) {
+        std::vector<double> XSec(3); // ordered scatter-capture-fission
 
         const double k = isotope->rho_0 * std::sqrt(energy);
         const double gamma_n = isotope->gamma_n * std::sqrt(energy / isotope->E_lambda);
@@ -71,13 +71,8 @@ private:
                 )
             );
 
-        XSec[1] = static_cast<float>(
-            isotope->N * (isotope->g_J * std::numbers::pi / d) * gamma_n * isotope->gamma_gamma / std::pow(k, 2)
-        );
-
-        XSec[2] = static_cast<float>(
-            isotope->N * (isotope->g_J * std::numbers::pi / d) * gamma_n * isotope->gamma_f / std::pow(k, 2)
-        );
+        XSec[1] = isotope->N * (isotope->g_J * std::numbers::pi / d) * gamma_n * isotope->gamma_gamma / std::pow(k, 2);
+        XSec[2] = isotope->N * (isotope->g_J * std::numbers::pi / d) * gamma_n * isotope->gamma_f / std::pow(k, 2);
 
         return XSec;
     }
@@ -100,20 +95,20 @@ inline bool ExportCrossSectionsToCSV(CrossSections *cross_sections, const std::s
 
     const double delta_ln_e = std::log(ENERGY_MAX / ENERGY_MIN) / (fidelity - 1);
     double ln_e = std::log(ENERGY_MIN) - delta_ln_e;
-    float energy{};
-    std::vector<float> XSec_split_E(8);
+    double energy{};
+    std::vector<double> XSec_split_E(8);
     std::vector<float> XSec_E(5);
 
     for (unsigned int i = 0; i < fidelity; ++i) {
         ln_e += delta_ln_e;
-        energy = static_cast<float>(std::exp(ln_e));
+        energy = std::exp(ln_e);
 
         XSec_split_E = cross_sections->getCrossSections(energy);
-        XSec_E[0] = energy;
-        XSec_E[1] = XSec_split_E[0] + XSec_split_E[3] + XSec_split_E[6];//scatter
-        XSec_E[2] = XSec_split_E[1] + XSec_split_E[4];//capture
-        XSec_E[3] = XSec_split_E[2] + XSec_split_E[5];//fission
-        XSec_E[4] = XSec_split_E[7];//total
+        XSec_E[0] = static_cast<float>(energy);
+        XSec_E[1] = static_cast<float>(XSec_split_E[0] + XSec_split_E[3] + XSec_split_E[6]);//scatter
+        XSec_E[2] = static_cast<float>(XSec_split_E[1] + XSec_split_E[4]);//capture
+        XSec_E[3] = static_cast<float>(XSec_split_E[2] + XSec_split_E[5]);//fission
+        XSec_E[4] = static_cast<float>(XSec_split_E[7]);//total
 
         XSec[i] = XSec_E;
     }
@@ -125,7 +120,7 @@ inline bool ExportCrossSectionsToCSV(CrossSections *cross_sections, const std::s
     }
     outfile.clear();
 
-    for (const auto &row :XSec) {
+    for (const auto &row : XSec) {
         for (size_t i = 0; i < row.size(); ++i) {
             outfile << row[i];
 
