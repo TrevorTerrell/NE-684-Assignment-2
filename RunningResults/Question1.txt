@@ -12,3 +12,61 @@ Running simulation with 100000 particles in implicit mode...
 k_inf = 1.08132 +/- 0.00112
 Elapsed time: 127.92740 ms
 FOM: 6196645.07531
+
+###
+Converting the code to support everything:
+Running simulation with 10000 particles in analog mode...
+k_inf = 1.10048 +/- 0.01401
+Elapsed time: 33.42826 ms
+FOM: 152497.81306
+
+Fission Cross Sections:
+0:	5.202e-06 +/- 2.2827e-05
+1:	0.0044508 +/- 0.00066622
+2:	148.55 +/- 1.4818
+
+Capture Cross Sections:
+0:	3.6961e-06 +/- 1.9242e-05
+1:	0.0075349 +/- 0.0008655
+2:	107.42 +/- 1.07
+
+Scatter Cross Sections:
+0->0:	0.015339 +/- 0.0043486
+0->1:	0.0013442 +/- 0.00036669
+0->2:	1.3689e-05 +/- 3.703e-05
+1->1:	0.017279 +/- 0.0020412
+1->2:	0 +/- 0
+2->2:	0 +/- 0
+
+Few-Group Flux:
+0:	3.6583e-05 +/- 0.0017037
+1:	0.79945 +/- 0.098901
+2:	0.0001753 +/- 1.3101e-05
+
+Running simulation with 10000 particles in implicit mode...
+k_inf = 1.08135 +/- 0.00352
+Elapsed time: 35.69716 ms
+FOM: 2259422.19875
+
+Fission Cross Sections:
+0:	5.1594e-06 +/- 2.0772e-06
+1:	0.0043804 +/- 0.0004129
+2:	150.11 +/- 1.5003
+
+Capture Cross Sections:
+0:	5.1639e-06 +/- 2.0844e-06
+1:	0.0076445 +/- 0.00069835
+2:	106.52 +/- 1.0647
+
+Scatter Cross Sections:
+0->0:	0.015334 +/- 0.0043366
+0->1:	0.001346 +/- 0.00036556
+0->2:	1.5412e-05 +/- 3.915e-05
+1->1:	0.017187 +/- 0.0018403
+1->2:	0 +/- 0
+2->2:	0.27979 +/- 0.002796
+
+Few-Group Flux:
+0:	3.6452e-05 +/- 0.0016966
+1:	0.79454 +/- 0.096342
+2:	0.00018084 +/- 1.0992e-05

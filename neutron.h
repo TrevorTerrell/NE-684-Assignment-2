@@ -10,12 +10,16 @@
 
 #ifndef NE684A2_NEUTRON_H
 #define NE684A2_NEUTRON_H
-
+// k_eff optimal: 1e-3, 1
+// general: 1e-5?, 10?
 #define HYPER_WEIGHT_THRESH 1e-5
-#define HYPER_ROUNDS 10
+#define HYPER_ROUNDS 1
 
 #define FINE_FLUX_GROUPS 1000
 
+/**
+ * @brief Holds the tally data lumped from every thread.
+ */
 struct Global_Tallies {
     float N = 0.0f;
     float k_inf = 0.0f;
@@ -34,12 +38,17 @@ struct Global_Tallies {
 
 //Fission table will be a vector of pointers to Fission_Neutron(s)
 //for asynchronicity, a neutron will compute its contribution to every tally then apply said contribution itself.
-
+/**
+ * @brief Holds the necessary information to store a neutron in the fission bank.
+ */
 struct Fission_Neutron {
     float weight = -1.0f;
     // This would also hold position, but in infinite homogenous, the transport problem simplifies to 0D
 };
 
+/**
+ * @brief Holds the tally information collected per-thread.
+ */
 struct Semilocal_Results {
     float N = 0.0f;
     float k_inf = 0.0f;
@@ -56,6 +65,9 @@ struct Semilocal_Results {
     std::vector<double> flux_2;
 };
 
+/**
+ * @brief Holds the tally contribution from a single neutron.
+ */
 struct Local_Results {
     float N = 0.0f;
     float k_inf = 0.0f;
@@ -66,69 +78,31 @@ struct Local_Results {
     std::vector<double> flux;
 };
 
-class analog_neutron {
+/**
+ * @breif Neutron object used for Monte Carlo simulation.
+ */
+class neutron {
 public:
-    explicit analog_neutron(const Fission_Neutron n) {
-        weight = n.weight;
-        energy = RandomManager::getRandomFrac() * (ENERGY_MAX - ENERGY_MIN) + ENERGY_MIN;
-    }
-
-    void simulate(CrossSections *crossSections, Local_Results *results) {
-        bool alive = true;
-        while (alive) {
-            std::vector<double> XSec = crossSections->getCrossSections(energy);
-
-            //Test collision type
-            float collision = static_cast<float>(RandomManager::getRandomFrac()) * XSec[7]; //ranges from 0-XSec_total
-                //only the first 7 are actual cross section values
-            uint32_t i;
-            for (i = 0; i < 7; ++i) {
-                    //strictly less than b/c 0.0 from the random number generator is inclusive (1.0 is exclusive)
-                if (collision < XSec[i]) {
-                    break;
-                }
-                collision -= XSec[i];
-            }
-            // Found collision in cross section i
-            switch (i % 3) {
-                case 0:
-                    //Scatter
-                    energy = RandomManager::getRandomFrac() * (energy - ENERGY_MIN) + ENERGY_MIN;
-                    // apply to local tallies
-                    break;
-                case 1:
-                    //Capture
-                    // apply to local tallies
-                    alive = false;
-                    break;
-                default:
-                    //Fission
-                    const float nu = crossSections->neutronsFromFission[i / 3] * weight; // int division to floor
-                    //apply to local tallies
-                    results->k_inf += nu;
-                    alive = false;
-                    break;
-            }
-        }
-    }
-
-private:
-    double energy;
-    float weight;
-};
-
-class implicit_neutron {
-public:
-    explicit implicit_neutron(const Fission_Neutron n) {
+    /**
+     * @brief Creates a neutron object from a banked neutron.
+     * @param n A neutron from the fission bank.
+     */
+    explicit neutron(const Fission_Neutron n) {
         weight = n.weight;
         energy = RandomManager::getRandomFrac() * (ENERGY_MAX - ENERGY_MIN) +ENERGY_MIN;
     }
 
-    void simulate(CrossSections *crossSections, Local_Results *results) {
+    /**
+     * @breif Simulates this neutron via Implicit Capture with Russian Roulette.
+     * @param crossSections A set of continuous energy macroscopic cross sections.
+     * @param results A mutable struct of this neutrons tally contributions.
+     */
+    void simulate_implicit(const CrossSections *crossSections, Local_Results *results) {
         bool alive = true;
         std::vector<double> XSec(8);
         std::vector<double> XSec_sums(3);
         double avg_nu = 0.0;
+        unsigned int g{};
         while (alive) {
             XSec = crossSections->getCrossSections(energy);
             XSec_sums = {
@@ -139,19 +113,11 @@ public:
             avg_nu = (crossSections->neutronsFromFission[0] * XSec[2] +
                 crossSections->neutronsFromFission[0] * XSec[5]) / XSec_sums[2];
 
-            unsigned int g{};
-            for (g = 0; g < energy_groups.size(); ++g) {
-                if (energy >= energy_groups[g]) {
-                    break;
-                }
-            }
+            g = energy_to_group();
             //std::cout << "g: " << g << "\n";
 
             //collision estimator of flux
-            results->group_flux[g] += weight / XSec[7];
-            fine_energy = static_cast<unsigned int>((FINE_FLUX_GROUPS - 1) * std::log(ENERGY_MAX / energy) / std::log(ENERGY_MAX / ENERGY_MIN));
-            //std::cout << "flux_g: " << fine_energy << "\n";
-            results->flux[fine_energy] += weight / XSec[7];
+            collision_flux_estimator(g, results, XSec[7]);
 
             //Fission Contribution
             results->k_inf += static_cast<float>(weight * avg_nu * XSec_sums[2] / XSec[7]);
@@ -162,16 +128,7 @@ public:
 
             //Scatter Contribution
             new_energy = RandomManager::getRandomFrac() * (energy - ENERGY_MIN) + ENERGY_MIN;
-            unsigned int g_new{};
-            for (g_new = 0; g_new < energy_groups.size(); ++g_new) {
-                if (new_energy >= energy_groups[g_new]) {
-                    break;
-                }
-            }
-            //std::cout << "g_new: " << g_new << "\n";
-
-            g = g * (results->scatter_rr.size() - g + 1) / 2 + (g_new - g);
-            results->scatter_rr[g] += weight * XSec_sums[0] / XSec[7];
+            results->scatter_rr[scattering_index(g, results->scatter_rr.size())] += weight * XSec_sums[0] / XSec[7];
 
             weight *= XSec_sums[0] / XSec[7];
             energy = new_energy;
@@ -187,42 +144,146 @@ public:
         }
     }
 
+    /**
+     * @breif Simulates this neutron via Analog Monte Carlo.
+     * @param crossSections A set of continuous energy macroscopic cross sections.
+     * @param results A mutable struct of this neutrons tally contributions.
+     */
+    void simulate_analog(const CrossSections *crossSections, Local_Results *results) {
+        bool alive = true;
+        std::vector<double> XSec(8);
+        double collision;
+        unsigned int i;
+
+        unsigned int g{};
+        while (alive) {
+            XSec = crossSections->getCrossSections(energy);
+            g = energy_to_group();
+
+            //determining the type of interaction
+            collision = RandomManager::getRandomFrac() * XSec[7];
+            for (i = 0; i < 7; ++i) {
+                if (collision < XSec[i])
+                    break;
+                collision -= XSec[i];
+            }
+            collision_flux_estimator(g, results, XSec[7]);
+
+            //given cross section vector structure, the modulo can determine the type of interaction
+            switch (i % 3) {
+                case 0:
+                    //Scatter
+                    new_energy = RandomManager::getRandomFrac() * (energy - ENERGY_MIN) + ENERGY_MIN;
+                    results->scatter_rr[scattering_index(g, results->scatter_rr.size())] += weight;
+                    energy = new_energy;
+                    break;
+                case 1:
+                    //Capture
+                    results->capture_rr[g] += weight;
+                    alive = false;
+                    break;
+                default:
+                    const double nu = crossSections->neutronsFromFission[i / 3];
+                    results->k_inf += static_cast<float>(weight * nu);
+                    results->fission_rr[g] += weight;
+                    alive = false;
+                    break;
+            }
+        }
+    }
+
 private:
     double energy;
-    unsigned int fine_energy = 0;
+
     double new_energy{};
     double weight;
 
     const std::vector<double> energy_groups = {1e2, 1.0, ENERGY_MIN};
+
+    /**
+     * @brief Returns the current energy group of this neutron.
+     * @return The index of the current energy group
+     */
+    [[nodiscard]] unsigned int energy_to_group() const {
+        unsigned int g{};
+        for (g = 0; g < energy_groups.size(); ++g) {
+            if (energy >= energy_groups[g]) break;
+        }
+        return g;
+    }
+
+    /**
+     * @brief Converts the to and from energy into an index into the scattering matrix.
+     * @return The index into the flattened scattering matrix.
+     */
+    [[nodiscard]] unsigned int scattering_index(const unsigned int from_group, const size_t scatter_size) const {
+        int g{};
+        for (g = 0; g < energy_groups.size(); ++g) {
+            if (new_energy >= energy_groups[g]) break;
+        }
+
+        return from_group * (scatter_size - g + 1) / 2 + (g - from_group);
+    }
+
+    /**
+     * @brief Estimates the flux contribution of this neutron via the collision estimator.
+     * @param from_group The energy group the collision happens in.
+     * @param results A mutable struct of this neutrons tally contributions.
+     * @param total_XSec The total macroscopic cross section.
+     */
+    void collision_flux_estimator(const unsigned int from_group, Local_Results *results, const double total_XSec) const {
+        static auto fine_energy = static_cast<unsigned int>((FINE_FLUX_GROUPS - 1) *
+            std::log(ENERGY_MAX / energy) / std::log(ENERGY_MAX / ENERGY_MIN));
+        results->group_flux[from_group] += weight / total_XSec;
+        results->flux[fine_energy] += weight / total_XSec;
+    }
 };
 
-void runNeutronAnalog(CrossSections *crossSections, const std::vector<Fission_Neutron> *fission_bank, Local_Results *results) {
-    Fission_Neutron neutron{.weight = 1.0f};
+/**
+ * @brief Handles the entire lifetime of a single neutron. Simulates with Analog Monte Carlo.
+ * @param crossSections A set of continuous energy macroscopic cross sections.
+ * @param fission_bank
+ * @param results A mutable struct of this neutrons tally contributions.
+ */
+inline void runNeutronAnalog(const CrossSections *crossSections, const std::vector<Fission_Neutron> *fission_bank, Local_Results *results) {
+    Fission_Neutron banked_neutron{.weight = 1.0f};
     if (!fission_bank->empty()) {
         const int index = static_cast<int>(RandomManager::getRandomFrac() * static_cast<double>(fission_bank->size()));
-        neutron = fission_bank->at(index);
+        banked_neutron = fission_bank->at(index);
     }
 
-    results->N += neutron.weight;
+    results->N += banked_neutron.weight;
 
-    analog_neutron n(neutron);
-    n.simulate(crossSections, results);
+    neutron n(banked_neutron);
+    n.simulate_analog(crossSections, results);
 }
 
-void runNeutronImplicit(CrossSections *crossSections, const std::vector<Fission_Neutron> *fission_bank, Local_Results *results) {
-    Fission_Neutron neutron{.weight = 1.0f};
+/**
+ * @brief Handles the entire lifetime of a single neutron. Simulates with Implicit Capture.
+ * @param crossSections A set of continuous energy macroscopic cross sections.
+ * @param fission_bank
+ * @param results A mutable struct of this neutrons tally contributions.
+ */
+inline void runNeutronImplicit(const CrossSections *crossSections, const std::vector<Fission_Neutron> *fission_bank, Local_Results *results) {
+    Fission_Neutron banked_neutron{.weight = 1.0f};
     if (!fission_bank->empty()) {
         const int index = static_cast<int>(RandomManager::getRandomFrac() * static_cast<double>(fission_bank->size()));
-        neutron = fission_bank->at(index);
+        banked_neutron = fission_bank->at(index);
     }
 
-    results->N += neutron.weight;
+    results->N += banked_neutron.weight;
 
-    implicit_neutron n(neutron);
-    n.simulate(crossSections, results);
+    neutron n(banked_neutron);
+    n.simulate_implicit(crossSections, results);
 }
 
-bool exportTallies(Global_Tallies *tallies, const std::string& filename) {
+/**
+ * @breif Exports tally data into a CSV.
+ * @param tallies The tally data to export.
+ * @param filename The filename and path/relative path to save the data.
+ * @return A boolean of the function's success.
+ */
+inline bool exportTallies(Global_Tallies *tallies, const std::string& filename) {
     std::cout <<std::defaultfloat;
 
     std::cout << "\nFission Cross Sections:\n";

@@ -15,6 +15,9 @@
 #define ENERGY_MIN 1e-5
 #define ENERGY_MAX 2e7
 
+/**
+ * @brief Holds isotope data used to generate cross-section data.
+ */
 struct Fissionable_Isotope {
     float N{};
     float g_J{};
@@ -26,6 +29,9 @@ struct Fissionable_Isotope {
     double rho_0 = 0.002196807122623 / 2.0;
 };
 
+/**
+ * @brief Holds continuous-energy cross section data.
+ */
 class CrossSections {
 public:
     explicit CrossSections() = default;
@@ -35,7 +41,7 @@ public:
      * @param energy The energy the collision even happened at.
      * @return A vector of cross section values ordered by Pu:(scatter, capture, fission), U:(scatter, capture, fission), Unknown:(scatter), Total.
      */
-    std::vector<double> getCrossSections(const double energy) {
+    [[nodiscard]] std::vector<double> getCrossSections(const double energy) const {
         std::vector<double> XSec;
         XSec.reserve(8);
 
@@ -54,6 +60,12 @@ public:
     const std::vector<float> neutronsFromFission = {2.88f, 0.0f, 0.0f};
 
 private:
+    /**
+     * @brief Calculates the cross section data for a single isotope at a given energy.
+     * @param energy The energy the collision even happened at.
+     * @param isotope An isotope the collision may have happened with.
+     * @return A vector of cross section values ordered by scatter, capture, fission.
+     */
     static std::vector<double> getFissionableCrossSections(const double energy, const Fissionable_Isotope *isotope) {
         std::vector<double> XSec(3); // ordered scatter-capture-fission
 
@@ -88,7 +100,13 @@ private:
     };
 };
 
-inline bool ExportCrossSectionsToCSV(CrossSections *cross_sections, const std::string& filename) {
+/**
+ * Exports the cross section data into a CSV.
+ * @param cross_sections A set of continuous energy macroscopic cross sections.
+ * @param filename The filename and path/relative path to save the data.
+ * @return A boolean of the function's success.
+ */
+inline bool ExportCrossSectionsToCSV(const CrossSections *cross_sections, const std::string& filename) {
     constexpr unsigned int fidelity = 1000; //number of points on the plot
 
     std::vector<std::vector<float>> XSec(fidelity);
