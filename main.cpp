@@ -64,7 +64,8 @@ int main() {
         std::cout << "Elapsed time: " << dt / 1e6 << " ms \n";
         std::cout << "FOM: " << 1.0 / (dt / 1e9 * crit_var) << "\n";
     }
-    std::cout << "\n";
+    std::cout << "Waiting to start implicit mode... (press Enter)\n";
+    std::cin.get();
     {
         std::cout << "Running simulation with " << NUM_PARTICLES << " particles in implicit mode...\n";
 

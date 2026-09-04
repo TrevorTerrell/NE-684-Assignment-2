@@ -12,8 +12,8 @@
 #define NE684A2_NEUTRON_H
 // k_eff optimal: 1e-3, 1
 // general: 1e-5?, 10?
-#define HYPER_WEIGHT_THRESH 1e-2
-#define HYPER_ROUNDS 1
+#define HYPER_WEIGHT_THRESH 1e-3
+#define HYPER_ROUNDS INFINITY
 
 #define FINE_FLUX_GROUPS 1000
 
@@ -98,7 +98,7 @@ public:
 
             //Russian Roulette
             if (weight <= HYPER_WEIGHT_THRESH) {
-                if (1.0 - RandomManager::getRandomFrac() <= 1.0 / HYPER_ROUNDS) {
+                if (1.0 - RandomManager::getRandomFrac() >= 1.0 / HYPER_ROUNDS) {
                     alive = false;
                 }
                 // neutron lives or is dead and weight doesn't matter

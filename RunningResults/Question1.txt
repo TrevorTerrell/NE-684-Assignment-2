@@ -1,15 +1,16 @@
 The following results pertain exclusively to question 1 of Assignment 2.
 The tallies needed for questions 2, 3 and 4 are not included in these results.
-Hyperparameters: Theta = 1, threshold = 1e-3
+Hyperparameters: Theta = INFINITY, threshold = 1e-3
 These results show a FOM increase of 1802.17%.
 
-Running simulation with 100000 particles in analog mode...
-k_inf = 1.08185 +/- 0.00441
-Elapsed time: 149.47630 ms
-FOM: 343841.77360
+Running simulation with 500000 particles in analog mode...
+k_inf = 1.00250 +/- 0.00194
+Elapsed time: 929.74540 ms
+FOM: 285761.44787
+Waiting to start implicit mode... (press Enter)
 
-Running simulation with 100000 particles in implicit mode...
-k_inf = 1.08132 +/- 0.00112
-Elapsed time: 127.92740 ms
-FOM: 6196645.07531
 
+Running simulation with 500000 particles in implicit mode...
+k_inf = 0.99999 +/- 0.00068
+Elapsed time: 671.74750 ms
+FOM: 3209275.39587
