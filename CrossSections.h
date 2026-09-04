@@ -51,7 +51,7 @@ public:
         std::vector<double> XSec_U = getFissionableCrossSections(energy, &U238);
         XSec.insert(XSec.end(), XSec_U.begin(), XSec_U.end());
 
-        XSec.push_back(0.1668101e-1);
+        XSec.push_back(0.1668101);
         XSec.push_back(std::accumulate(XSec.begin(), XSec.end(), 0.0));
 
         return XSec;
@@ -74,17 +74,15 @@ private:
         const double gamma_t = gamma_n + isotope->gamma_gamma + isotope->gamma_f;
         const double d = std::pow(energy - isotope->E_lambda, 2.0) + std::pow(gamma_t / 2.0, 2);
 
-        XSec[0] = static_cast<float>(
-            4.0 * std::numbers::pi * std::pow(isotope->a_c, 2.0) * isotope->N +
-            isotope->N * (isotope->g_J * std::numbers::pi / d) * (
+        XSec[0] = 4.0 * std::numbers::pi * std::pow(isotope->a_c, 2.0) * isotope->N +
+                isotope->N * (isotope->g_J * std::numbers::pi / d) * (
                 std::pow(gamma_n / k, 2) +
                 4.0 * isotope->a_c * (energy - isotope->E_lambda) * gamma_n / k  +
                 -2.0 * std::pow(isotope->a_c, 2.0) * gamma_n * gamma_t
-                )
             );
 
         XSec[1] = isotope->N * (isotope->g_J * std::numbers::pi / d) * gamma_n * isotope->gamma_gamma / std::pow(k, 2);
-        XSec[2] = isotope->N * (isotope->g_J * std::numbers::pi / d) * gamma_n * isotope->gamma_f / std::pow(k, 2);
+        XSec[2] = isotope->N * (isotope->g_J * std::numbers::pi / d) * gamma_n * isotope->gamma_f     / std::pow(k, 2);
 
         return XSec;
     }
