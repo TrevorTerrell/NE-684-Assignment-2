@@ -51,7 +51,7 @@ public:
         std::vector<double> XSec_U = getFissionableCrossSections(energy, &U238);
         XSec.insert(XSec.end(), XSec_U.begin(), XSec_U.end());
 
-        XSec.push_back(0.1668101e-1);
+        XSec.push_back(0.1668101);
         XSec.push_back(std::accumulate(XSec.begin(), XSec.end(), 0.0));
 
         return XSec;
