@@ -101,7 +101,7 @@ int main() {
         std::cout << "Elapsed time: " << dt / 1e6 << " ms \n";
         std::cout << "FOM: " << 1.0 / (dt / 1e9 * crit_var) << "\n";
 
-        if (!exportTallies(&tallies, "finegroup_flux_i.csv")) {
+        if (!exportTallies(&tallies, "finegroup_flux_a.csv")) {
             return 1;
         }
     }
