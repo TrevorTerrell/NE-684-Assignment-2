@@ -232,7 +232,7 @@ private:
      * @param total_XSec The total macroscopic cross section.
      */
     void collision_flux_estimator(const unsigned int from_group, Local_Results *results, const double total_XSec) const {
-        static auto fine_energy = static_cast<unsigned int>((FINE_FLUX_GROUPS - 1) *
+        const auto fine_energy = static_cast<unsigned int>(FINE_FLUX_GROUPS *
             std::log(ENERGY_MAX / energy) / std::log(ENERGY_MAX / ENERGY_MIN));
         results->group_flux[from_group] += weight / total_XSec;
         results->flux[fine_energy] += weight / total_XSec;
@@ -314,27 +314,21 @@ inline bool exportTallies(Global_Tallies *tallies, const std::string& filename) 
     std::cout << "\nFew-Group Flux:\n";
     const std::vector<double> energy_groups = {ENERGY_MAX, 1e2, 1.0, ENERGY_MIN};
     for (int g = 0; g < tallies->group_flux.size(); ++g) {
-        tallies->group_flux[g] /= (energy_groups[g] - energy_groups[g + 1]);
-        tallies->group_flux_2[g] /= (energy_groups[g] - energy_groups[g + 1]);
-
         const auto flux_var = static_cast<float>(std::abs(std::pow(tallies->group_flux[g] / tallies->N, 2.0) - tallies->group_flux_2[g] / tallies->N) / (tallies->N - 1));
 
-        std::cout << g << ":\t" << tallies->group_flux[g] / tallies->N << " +/- " << std::sqrt(flux_var) << "\n";
+        std::cout << g << ":\t" << tallies->group_flux[g] / tallies->N / (energy_groups[g] - energy_groups[g + 1]) << " +/- " << std::sqrt(flux_var) / (energy_groups[g] - energy_groups[g + 1]) << "\n";
     }
 
     std::vector<std::vector<float>> flux(FINE_FLUX_GROUPS);
     std::vector<float> single_group_flux(3);
-    double energy;
-    double flux_var;
-    double delta_energy;
+    const double dlogE = std::log(ENERGY_MAX / ENERGY_MIN) / FINE_FLUX_GROUPS;
     for (int g = 0; g < FINE_FLUX_GROUPS; ++g) {
-        energy = std::log(ENERGY_MAX) - g * std::log(ENERGY_MAX / ENERGY_MIN) / (FINE_FLUX_GROUPS - 1);
-        delta_energy = std::exp(energy - std::log(ENERGY_MAX / ENERGY_MIN) / (FINE_FLUX_GROUPS - 1)) - energy;
-        energy = std::exp(energy);
-        flux_var = std::abs(std::pow(tallies->flux[g] / tallies->N, 2.0) - tallies->flux_2[g] / tallies->N) / (tallies->N - 1);
-        single_group_flux[0] = static_cast<float>(energy);
-        single_group_flux[1] = static_cast<float>(tallies->flux[g] / delta_energy);
-        single_group_flux[2] = static_cast<float>(std::sqrt(flux_var / delta_energy));
+        const double logE = std::log(ENERGY_MAX) - g * dlogE;
+        const double delta_energy = std::exp(logE) - std::exp(logE - dlogE);
+        const double flux_var = std::abs(std::pow(tallies->flux[g] / tallies->N, 2.0) - tallies->flux_2[g] / tallies->N) / (tallies->N - 1);
+        single_group_flux[0] = static_cast<float>(std::exp(logE));
+        single_group_flux[1] = static_cast<float>(tallies->flux[g] / tallies->N / delta_energy);
+        single_group_flux[2] = static_cast<float>(std::sqrt(flux_var) / delta_energy);
 
         flux[g] = single_group_flux;
     }
